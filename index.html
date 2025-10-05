@@ -21,8 +21,8 @@
 
   /* HUD above the game */
   #hud{flex:0 0 auto; padding:calc(8px + env(safe-area-inset-top)) 12px 10px; display:flex; align-items:center; justify-content:space-between; gap:12px}
-  #hudL{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
-  #score{font-weight:800;font-size:22px;letter-spacing:.4px}
+  #hudL{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+  #score{font-weight:900;font-size:clamp(28px,6vw,52px);letter-spacing:.4px;line-height:1}
   #best{font-size:12px;color:var(--muted)}
   #stats{font-size:12px;color:var(--muted)}
   #hudR{display:flex;gap:10px;align-items:center}
@@ -64,9 +64,10 @@
     <div id="hudL">
       <div id="score">0</div>
       <div id="best">Best: <span id="bestVal">0</span></div>
-      <div id="stats">Run: <span id="runRallies">0</span> • Longest: <span id="longest">0</span> • Avg: <span id="avg">0</span></div>
+      <div id="stats">Longest: <span id="longest">0</span> • Avg: <span id="avg">0</span></div>
     </div>
     <div id="hudR">
+      <button id="pauseBtn" class="btn" aria-pressed="false" title="Pause">⏸️</button>
       <button id="muteBtn" class="btn" aria-pressed="false">Sound: Off</button>
     </div>
   </header>
@@ -110,7 +111,7 @@
     <div id="pauseOverlay" class="overlay" style="display:none">
       <div class="card">
         <h1>Paused</h1>
-        <p>Two-finger tap again or press Resume.</p>
+        <p>Press Resume or use the HUD button.</p>
         <div class="row">
           <button id="resumeBtn" class="btn primary">Resume</button>
         </div>
@@ -124,7 +125,7 @@
 
 <script>
 (() => {
-  // --- hoisted utils (fix for Start not binding) ---
+  // --- hoisted utils ---
   function clamp(v,min,max){ return v<min?min:v>max?max:v; }
   function lerp(a,b,t){ return a+(b-a)*t; }
   function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
@@ -136,7 +137,6 @@
 
   const scoreEl = document.getElementById('score');
   const bestEl = document.getElementById('bestVal');
-  const runRalliesEl = document.getElementById('runRallies');
   const longestEl = document.getElementById('longest');
   const avgEl = document.getElementById('avg');
 
@@ -148,6 +148,7 @@
   const restartBtn = document.getElementById('restartBtn');
   const resumeBtn = document.getElementById('resumeBtn');
   const muteBtn = document.getElementById('muteBtn');
+  const pauseBtn = document.getElementById('pauseBtn');
 
   const countdown = document.getElementById('countdown');
   const countNum = document.getElementById('countNum');
@@ -227,10 +228,6 @@
       touchSide.set(list[i].identifier, side);
       if(side==='L') leftY = clamp(pt.y, paddleR, H-paddleR); else rightY = clamp(pt.y, paddleR, H-paddleR);
     }
-    if(running && !gameOver){
-      const sides = new Set([...touchSide.values()]);
-      if(sides.has('L') && sides.has('R')) togglePause(true);
-    }
   }
   function moveTouches(list){
     for(let i=0;i<list.length;i++){
@@ -256,7 +253,7 @@
 
   // Game lifecycle
   function serve(){
-    score=0; scoreEl.textContent='0'; runRalliesEl.textContent='0';
+    score=0; scoreEl.textContent='0';
     leftY=H*0.5; rightY=H*0.5;
     const dir=Math.random()<0.5?-1:1; ballX=W*0.5 + dir*unit*0.05; ballY=H*0.5;
     const angle=(Math.random()*0.6 - 0.3);
@@ -264,12 +261,13 @@
     vx=dir*speed*Math.cos(angle); vy=speed*Math.sin(angle);
     running=false; paused=false; gameOver=false; particles.length=0; danger.style.opacity=0;
     lblLeft.style.opacity=.2; lblRight.style.opacity=.2; requestAnimationFrame(()=>{ lblLeft.style.opacity=0; lblRight.style.opacity=0; });
+    syncPauseBtn();
   }
   async function begin(){
     startOverlay.style.display='none'; gameOverOverlay.style.display='none';
     serve(); countdown.style.display='flex';
     for(let n=3;n>=1;n--){ countNum.textContent=n; countNum.style.animation='none'; void countNum.offsetWidth; countNum.style.animation='pop .8s ease both'; if(!muted) ping(520+(3-n)*120,0.07,'sine'); await sleep(900); }
-    countdown.style.display='none'; tPrev=performance.now(); running=true; loop();
+    countdown.style.display='none'; tPrev=performance.now(); running=true; syncPauseBtn(); loop();
   }
   function end(){
     running=false; gameOver=true;
@@ -278,12 +276,19 @@
     lastScores.push(score); if(lastScores.length>10) lastScores.shift();
     localStorage.setItem('two_thumb_last10', JSON.stringify(lastScores));
     avgEl.textContent = avgFromLast(lastScores).toFixed(0);
+    syncPauseBtn();
   }
   function togglePause(on){
-    if(gameOver) return;
+    if(gameOver || startOverlay.style.display!=='none') return;
     const want = on===true ? true : !paused; paused=want;
     if(paused){ running=false; pauseOverlay.style.display='flex'; }
     else { pauseOverlay.style.display='none'; tPrev=performance.now(); running=true; requestAnimationFrame(loop); }
+    syncPauseBtn();
+  }
+  function syncPauseBtn(){
+    pauseBtn.textContent = (running && !paused) ? '⏸️' : '▶️';
+    pauseBtn.title = (running && !paused) ? 'Pause' : 'Resume';
+    pauseBtn.setAttribute('aria-pressed', String(paused));
   }
 
   // Particles
@@ -391,7 +396,7 @@
   }
 
   function onRally(side,px,py,col){
-    score++; scoreEl.textContent=String(score); runRalliesEl.textContent=String(score);
+    score++; scoreEl.textContent=String(score);
     if(score>best){ showToast(); spawnConfetti(W/2,H*0.3); best=score; bestEl.textContent=String(best); localStorage.setItem('two_thumb_best',best); }
     if(score>longest){ longest=score; longestEl.textContent=String(longest); localStorage.setItem('two_thumb_longest',longest); }
     spawnSparks(px,py,col); vibrate(side==='L'?[12]:[6,6,6]); ping(1250);
@@ -405,12 +410,14 @@
   startBtn.addEventListener('click', begin);
   restartBtn.addEventListener('click', begin);
   resumeBtn.addEventListener('click', ()=>togglePause(false));
+  pauseBtn.addEventListener('click', ()=>{ if(!running && !paused && startOverlay.style.display!=='none') return; togglePause(); });
   muteBtn.addEventListener('click', ()=>{
     muted=!muted; localStorage.setItem('two_thumb_muted', muted?'1':'0');
     muteBtn.textContent='Sound: ' + (muted ? 'Off' : 'On'); muteBtn.setAttribute('aria-pressed', String(!muted));
     if(!muted) ping(880,0.05);
   });
   muteBtn.textContent='Sound: ' + (muted ? 'Off' : 'On'); muteBtn.setAttribute('aria-pressed', String(!muted));
+  syncPauseBtn();
 
   // Tap canvas to start
   canvas.addEventListener('click', ()=>{ if(startOverlay.style.display!=='none' && !running) begin(); });
