@@ -12,50 +12,53 @@
     --chip:#151c35; --chip2:#0f1530;
     --danger:#ff4d4d; --ok:#33d17a;
     --shadow:0 10px 28px rgba(0,0,0,.4);
+    --z-canvas:0; --z-lanes:1; --z-hud:10; --z-overlay:20; --z-count:25; --z-start:30;
   }
   *{box-sizing:border-box}
+  /* Force hidden to actually hide (fix for file:// and some resets) */
+  [hidden]{display:none !important;}
+
   html,body{height:100%;margin:0;background:var(--bg1);color:var(--fg);
-    font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-  }
-  body{overscroll-behavior:none; touch-action:none; -webkit-user-select:none; user-select:none}
+    font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+  body{overscroll-behavior:none; -webkit-user-select:none; user-select:none; touch-action:none}
   #wrap{position:fixed; inset:0; min-height:100dvh}
 
-  /* Game layer */
-  canvas#game{position:fixed; inset:0; width:100vw; height:100dvh; display:block}
+  /* Game */
+  canvas#game{position:fixed; inset:0; width:100vw; height:100dvh; display:block; z-index:var(--z-canvas)}
 
   /* Decorative thumb lanes */
-  .lanes{position:fixed; inset:0; display:flex; pointer-events:none}
+  .lanes{position:fixed; inset:0; display:flex; pointer-events:none; z-index:var(--z-lanes)}
   .lanes>div{flex:1; border-left:1px dashed rgba(255,255,255,.15); border-right:1px dashed rgba(255,255,255,.15)}
   .lanes>div:first-child{background:linear-gradient(180deg, rgba(105,224,255,.08), transparent 40%, rgba(105,224,255,.08))}
   .lanes>div:last-child{background:linear-gradient(180deg, rgba(154,255,122,.08), transparent 40%, rgba(154,255,122,.08))}
 
   /* HUD */
-  .hud{position:fixed; inset:0; pointer-events:none; z-index:3}
+  .hud{position:fixed; inset:0; z-index:var(--z-hud)}
   .row{display:flex; align-items:center; justify-content:space-between;
     padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 10px 12px; gap:8px}
-  .score{pointer-events:none; font-variant-numeric:tabular-nums; text-align:center}
+  .score{font-variant-numeric:tabular-nums; text-align:center}
   .score .big{font-size:28px; font-weight:800; text-shadow:0 2px 0 rgba(0,0,0,.35)}
   .score .small{font-size:12px; color:var(--muted)}
 
   .btn{
-    pointer-events:auto; -webkit-tap-highlight-color:transparent;
+    -webkit-tap-highlight-color:transparent;
     appearance:none; border:0; border-radius:14px; min-width:44px; min-height:44px;
     padding:12px 14px; font-weight:700; color:#fff; background:var(--chip); box-shadow:var(--shadow);
-    display:inline-flex; align-items:center; justify-content:center; gap:8px; font-size:14px;
+    display:inline-flex; align-items:center; justify-content:center; gap:8px; font-size:14px; cursor:pointer
   }
   .btn:active{transform:translateY(1px)}
   .btn.ghost{background:var(--chip2)}
   .btn.red{background:#2a0f16; color:#ffd6d6}
   .btn.green{background:#0e2a1d; color:#d6ffea}
 
-  /* Big Start CTA: lifted above any overlay to avoid “dead” start */
+  /* Start CTA above overlays */
   .bottom-cta{position:fixed; left:50%; transform:translateX(-50%);
-    bottom:calc(env(safe-area-inset-bottom,0px) + 18px); z-index:9; pointer-events:none}
-  .bottom-cta .btn{pointer-events:auto; font-size:16px; padding:16px 22px; border-radius:16px}
+    bottom:calc(env(safe-area-inset-bottom,0px) + 18px); z-index:var(--z-start)}
+  .bottom-cta .btn{font-size:16px; padding:16px 22px; border-radius:16px}
 
   /* Overlays */
   .overlay{position:fixed; inset:0; display:grid; place-items:center;
-    background:rgba(5,8,20,.64); backdrop-filter:blur(6px); padding:24px; z-index:8}
+    background:rgba(5,8,20,.64); backdrop-filter:blur(6px); padding:24px; z-index:var(--z-overlay)}
   .panel{width:min(92vw,520px); border-radius:18px; background:#0e1735; box-shadow:var(--shadow); padding:20px}
   .panel h1{margin:0 0 4px 0; font-size:22px}
   .panel p{margin:8px 0; color:var(--muted)}
@@ -63,12 +66,12 @@
   .tag{display:inline-block; font-size:12px; padding:6px 10px; border-radius:999px; background:#0b132b; color:var(--muted); margin-right:6px; margin-top:6px}
 
   /* Countdown */
-  .countdown{position:fixed; inset:0; display:grid; place-items:center; z-index:6; pointer-events:none;
+  .countdown{position:fixed; inset:0; display:grid; place-items:center; z-index:var(--z-count); pointer-events:none;
     font-weight:900; font-size:18vw; line-height:1; color:#fff; text-shadow:0 10px 40px rgba(0,0,0,.55)}
 
-  /* Top speed meter */
+  /* Speed meter */
   .meter{position:fixed; top:calc(env(safe-area-inset-top,0px) + 60px); left:50%; transform:translateX(-50%);
-    width:min(70vw,420px); height:8px; background:rgba(255,255,255,.08); border-radius:999px; overflow:hidden; z-index:3}
+    width:min(70vw,420px); height:8px; background:rgba(255,255,255,.08); border-radius:999px; overflow:hidden; z-index:var(--z-hud)}
   .meter>i{display:block; height:100%; width:0%; background:linear-gradient(90deg,#7cf8ff,#ffd86b,#ff8ab5); transition:width .15s}
 
   @media (max-width:420px){ .score .big{font-size:24px} .btn{padding:10px 12px} }
@@ -77,7 +80,6 @@
 <body>
 <div id="wrap">
   <canvas id="game"></canvas>
-
   <div class="lanes" aria-hidden="true"><div></div><div></div></div>
 
   <div class="hud" aria-live="polite">
@@ -96,9 +98,11 @@
       </div>
     </div>
     <div class="meter"><i id="speedBar"></i></div>
-    <div class="bottom-cta">
-      <button class="btn green" id="btnStart">▶ Tap to Start</button>
-    </div>
+  </div>
+
+  <!-- Start CTA ABOVE overlays -->
+  <div class="bottom-cta">
+    <button class="btn green" id="btnStart" role="button">▶ Tap to Start</button>
   </div>
 
   <div id="countdown" class="countdown" hidden>3</div>
@@ -107,9 +111,9 @@
   <div id="help" class="overlay" hidden>
     <div class="panel">
       <h1>Two-Thumb Pong</h1>
-      <p>Hold your phone. Use both thumbs. Touch and drag anywhere on the left and right halves to move each puck up and down. Keep the ball bouncing between them. Each hit = +1.</p>
+      <p>Drag with your left and right thumbs on each half of the screen to move the two pucks. Keep the ball bouncing. Each hit = +1.</p>
       <div>
-        <span class="tag">Spin control on off-center hits</span>
+        <span class="tag">Spin from off-center hits</span>
         <span class="tag">Speed ramps by level</span>
         <span class="tag">Pause anytime</span>
       </div>
@@ -124,7 +128,7 @@
   <div id="settings" class="overlay" hidden>
     <div class="panel">
       <h1>Settings</h1>
-      <p>Sound, vibration, data.</p>
+      <p>Sound, vibration, and data.</p>
       <div class="actions">
         <button class="btn" id="toggleSound">🔊 Sound: <span id="soundState">On</span></button>
         <button class="btn" id="toggleVib">📳 Vibration: <span id="vibState">On</span></button>
@@ -155,10 +159,7 @@ const store = {
   get(k, d){ try{const v=localStorage.getItem(k); return v===null?d:JSON.parse(v)}catch{ return d } },
   set(k, v){ try{localStorage.setItem(k, JSON.stringify(v))}catch{} }
 };
-const settings = {
-  sound: store.get('tt_sound', true),
-  vibrate: store.get('tt_vibe', true),
-};
+const settings = { sound: store.get('tt_sound', true), vibrate: store.get('tt_vibe', true) };
 let best = store.get('tt_best', 0);
 let audioCtx = null;
 function ping(freq=440, dur=0.06, vol=0.08){
@@ -166,14 +167,10 @@ function ping(freq=440, dur=0.06, vol=0.08){
   try{
     if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
     const t0 = audioCtx.currentTime;
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
+    const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
     osc.type='sine'; osc.frequency.value=freq;
-    gain.gain.setValueAtTime(0, t0);
-    gain.gain.linearRampToValueAtTime(vol, t0+0.005);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
-    osc.connect(gain).connect(audioCtx.destination);
-    osc.start(t0); osc.stop(t0+dur);
+    gain.gain.setValueAtTime(0,t0); gain.gain.linearRampToValueAtTime(vol,t0+0.005); gain.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+    osc.connect(gain).connect(audioCtx.destination); osc.start(t0); osc.stop(t0+dur);
   }catch{}
 }
 function vibrate(ms=15){ if(settings.vibrate && navigator.vibrate) navigator.vibrate(ms); }
@@ -192,6 +189,7 @@ const elToggleVib=$('#toggleVib'), elVibState=$('#vibState'), elResetBest=$('#re
 const elFinalScore=$('#finalScore'), elFinalBest=$('#finalBest'), elNewBestTag=$('#newBestTag');
 const elAgain=$('#again'), elOverClose=$('#overClose'), elShare=$('#shareBtn');
 const elCountdown=$('#countdown');
+const startCta = document.querySelector('.bottom-cta');
 
 elBest.textContent = best;
 elSoundState.textContent = settings.sound?'On':'Off';
@@ -235,8 +233,8 @@ addEventListener('resize', fit, {passive:true});
 fit();
 
 /* ---------- Controls ---------- */
-function openOverlay(el){ el.hidden=false; }
-function closeOverlay(el){ el.hidden=true; }
+function openOverlay(el){ el.hidden=false; el.setAttribute('aria-hidden','false'); }
+function closeOverlay(el){ el.hidden=true; el.setAttribute('aria-hidden','true'); }
 
 elBtnHelp.onclick = ()=> openOverlay(elHelp);
 elHelpClose.onclick = ()=> closeOverlay(elHelp);
@@ -248,18 +246,16 @@ elToggleSound.onclick = ()=> { settings.sound=!settings.sound; store.set('tt_sou
 elToggleVib.onclick = ()=> { settings.vibrate=!settings.vibrate; store.set('tt_vibe',settings.vibrate); elVibState.textContent=settings.vibrate?'On':'Off'; vibrate(15); };
 elResetBest.onclick = ()=> { best=0; store.set('tt_best',0); elBest.textContent='0'; };
 
-elStart.onclick = ()=> startFlow();        /* FIX: start CTA always works (z-index 9) */
+elStart.onclick = ()=> startFlow();
 elRestart.onclick = ()=> resetGame(true);
 elPause.onclick = ()=> togglePause();
 elAgain.onclick = ()=> { closeOverlay(elGameOver); resetGame(true); };
 elOverClose.onclick = ()=> closeOverlay(elGameOver);
 
 if(navigator.share) elShare.style.display='inline-flex';
-elShare.onclick = async ()=>{
-  try{ await navigator.share({title:'Two-Thumb Pong', text:`I scored ${score} in Two-Thumb Pong!`, url:location.href}); }catch{}
-};
+elShare.onclick = async ()=>{ try{ await navigator.share({title:'Two-Thumb Pong', text:`I scored ${score}!`, url:location.href}); }catch{} };
 
-/* ---------- Wake Lock (best effort) ---------- */
+/* ---------- Wake Lock ---------- */
 async function lockScreen(){ try{ if('wakeLock' in navigator){ wakeLock = await navigator.wakeLock.request('screen'); } }catch{} }
 document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible' && state===GameState.Paused) scheduleLoop(); });
 
@@ -267,6 +263,7 @@ document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState=
 function startFlow(){
   if(state===GameState.Playing || state===GameState.Countdown) return;
   closeOverlay(elHelp); closeOverlay(elSettings); closeOverlay(elGameOver);
+  startCta.hidden = true;                 /* hide Start during countdown */
   startCountdown();
   lockScreen();
 }
@@ -279,6 +276,7 @@ function startCountdown(){
 function beginPlay(){
   state = GameState.Playing;
   elCountdown.hidden=true;
+  startCta.hidden = true;                 /* keep hidden while playing */
   lastT = performance.now();
   ping(900,.06,.12);
 }
@@ -293,11 +291,13 @@ function gameOver(){
   elFinalScore.textContent = score; elFinalBest.textContent = best;
   elBest.textContent = best; elNewBestTag.style.display = (score===best && score>0)?'inline-block':'none';
   openOverlay(elGameOver);
+  startCta.hidden = false;                /* show Start on end */
 }
 function resetGame(andCountdown=false){
   score=0; level=1; elScore.textContent=score; elLvl.textContent=level; elBar.style.width='0%';
   world.ball.trail.length=0; placeBall(true);
   state=GameState.Ready; elPause.textContent='⏸️';
+  startCta.hidden = andCountdown ? true : false;
   if(andCountdown) startCountdown(); else render(0);
 }
 function placeBall(randomDir=false){
@@ -308,7 +308,7 @@ function placeBall(randomDir=false){
   b.vx = dir * b.speed; b.vy = (Math.random()*2-1)*120;
 }
 
-/* ---------- Input (touch + mouse for dev) ---------- */
+/* ---------- Input (touch + mouse) ---------- */
 function sideFromX(x){ return x < (world.w/2) ? 'L' : 'R'; }
 function clampY(y){ return Math.max(world.top, Math.min(world.bottom, y)); }
 function movePuck(side, y){ if(side==='L') world.left.y = clampY(y); else world.right.y = clampY(y); }
@@ -345,7 +345,6 @@ addEventListener('mouseup', ()=>{ mouseL=false; mouseR=false; });
 /* ---------- Physics ---------- */
 function onHit(sideDy){
   score++; elScore.textContent=score;
-  // Level up every 8 hits
   const b=world.ball;
   if(score%8===0){ level++; elLvl.textContent=level; b.speedMax+=40; }
   elBar.style.width = Math.min(100, Math.round((b.speed/b.speedMax)*100)) + '%';
@@ -368,20 +367,16 @@ function step(dt){
 
   const b=world.ball, L=world.left, R=world.right;
 
-  // Move ball
   b.x += b.vx*dt; b.y += b.vy*dt;
 
-  // Trail
   b.trail.push({x:b.x,y:b.y, t:0.35});
   if(b.trail.length>24) b.trail.shift();
   for(const p of b.trail){ p.t -= dt; }
   while(b.trail.length && b.trail[0].t<=0) b.trail.shift();
 
-  // Walls
   if(b.y-b.r<=world.top){ b.y=world.top+b.r; b.vy=Math.abs(b.vy); ping(520,.03,.07); }
   if(b.y+b.r>=world.bottom){ b.y=world.bottom-b.r; b.vy=-Math.abs(b.vy); ping(520,.03,.07); }
 
-  // Left puck
   if(b.vx<0 && b.x-b.r<=L.x+L.r){
     const dy=b.y-L.y;
     if(Math.abs(dy)<=L.r+b.r){
@@ -389,7 +384,6 @@ function step(dt){
       b.vy += dy*4.2; accelerate(b,1.045); onHit(dy);
     }
   }
-  // Right puck
   if(b.vx>0 && b.x+b.r>=R.x-R.r){
     const dy=b.y-R.y;
     if(Math.abs(dy)<=R.r+b.r){
@@ -398,10 +392,8 @@ function step(dt){
     }
   }
 
-  // Miss
   if(b.x+b.r<0 || b.x-b.r>world.w) onMiss();
 
-  // Particles
   updateParticles(dt);
 }
 function accelerate(b,f){
@@ -430,30 +422,24 @@ function updateParticles(dt){
 function render(dt){
   const w=world.w, h=world.h;
 
-  // BG gradient
   const g=ctx.createLinearGradient(0,0,0,h);
   g.addColorStop(0, getCSS('--bg1')); g.addColorStop(1, getCSS('--bg2'));
   ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
 
-  // Center dashed line and walls
   ctx.globalAlpha=.1; ctx.strokeStyle='#fff'; ctx.lineWidth=1; ctx.setLineDash([6,8]);
   ctx.beginPath(); ctx.moveTo(w/2,0); ctx.lineTo(w/2,h); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha=1;
   ctx.globalAlpha=.12; ctx.fillStyle='#fff';
   ctx.fillRect(0, world.top-4, w, 4); ctx.fillRect(0, world.bottom, w, 4); ctx.globalAlpha=1;
 
-  // Pucks
   drawPuck(world.left.x, world.left.y, world.left.r, world.left.color);
   drawPuck(world.right.x, world.right.y, world.right.r, world.right.color);
 
-  // Ball trail
   for(let i=0;i<world.ball.trail.length;i++){
     const p=world.ball.trail[i]; const a=Math.max(0, p.t)/0.35;
     ctx.globalAlpha=a*0.5; drawBall(p.x,p.y, world.ball.r*(0.7+a*0.3)); ctx.globalAlpha=1;
   }
-  // Ball
   drawBall(world.ball.x, world.ball.y, world.ball.r);
 
-  // Particles
   for(const p of particles){
     ctx.globalAlpha = Math.max(0, p.life*2.2);
     ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
@@ -486,7 +472,7 @@ document.addEventListener('gesturestart', e=>e.preventDefault());
 document.addEventListener('dblclick', e=>e.preventDefault(), {passive:false});
 addEventListener('pointerdown', ()=>{ if(audioCtx && audioCtx.state==='suspended') audioCtx.resume(); }, {once:true});
 
-/* First visit helper: show Help but Start works regardless due to z-index 9 */
+/* First visit hint (Start stays above or hidden by countdown) */
 if(!store.get('tt_seen', false)){ openOverlay(elHelp); store.set('tt_seen', true); }
 
 /* Keyboard for desktop testing */
@@ -495,7 +481,7 @@ addEventListener('keydown', e=>{
   if(e.code==='KeyR') resetGame(true);
 });
 
-/* ---------- Drawing once if not running ---------- */
+/* ---------- Draw idle ---------- */
 render(0);
 </script>
 </body>
