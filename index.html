@@ -6,108 +6,79 @@
 <title>Two-Thumb Pong</title>
 <style>
   :root{
-    --bg:#0b1020;
-    --fg:#ffffff;
-    --muted:#b7c2ff;
-    --accent:#5b8cff;
-    --danger:#ff4d4d;
-    --ok:#33d17a;
-    --shadow:0 8px 24px rgba(0,0,0,.35);
+    --bg1:#080e24; --bg2:#0f1a3f;
+    --fg:#fff; --muted:#b9c4ff;
+    --accentL:#69e0ff; --accentR:#9aff7a; --ball:#ffd86b;
+    --chip:#151c35; --chip2:#0f1530;
+    --danger:#ff4d4d; --ok:#33d17a;
+    --shadow:0 10px 28px rgba(0,0,0,.4);
   }
   *{box-sizing:border-box}
-  html,body{
-    margin:0;height:100%;background:var(--bg);color:var(--fg);
-    font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+  html,body{height:100%;margin:0;background:var(--bg1);color:var(--fg);
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
   }
-  /* Prevent scroll/selection on mobile */
   body{overscroll-behavior:none; touch-action:none; -webkit-user-select:none; user-select:none}
-  #wrap{
-    position:fixed; inset:0;
-    min-height:100dvh; /* mobile Safari dynamic bar safe */
-    display:grid; place-items:center;
-  }
-  canvas#game{
-    position:fixed; inset:0;
-    width:100vw; height:100dvh;
-    display:block;
-    touch-action:none;
-  }
+  #wrap{position:fixed; inset:0; min-height:100dvh}
+
+  /* Game layer */
+  canvas#game{position:fixed; inset:0; width:100vw; height:100dvh; display:block}
+
+  /* Decorative thumb lanes */
+  .lanes{position:fixed; inset:0; display:flex; pointer-events:none}
+  .lanes>div{flex:1; border-left:1px dashed rgba(255,255,255,.15); border-right:1px dashed rgba(255,255,255,.15)}
+  .lanes>div:first-child{background:linear-gradient(180deg, rgba(105,224,255,.08), transparent 40%, rgba(105,224,255,.08))}
+  .lanes>div:last-child{background:linear-gradient(180deg, rgba(154,255,122,.08), transparent 40%, rgba(154,255,122,.08))}
+
   /* HUD */
-  .hud{
-    position:fixed; inset:0; pointer-events:none;
-  }
-  .row{
-    display:flex; align-items:center; justify-content:space-between;
-    padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 10px 12px;
-    gap:8px;
-  }
-  .score{
-    pointer-events:none; font-weight:700; letter-spacing:.3px;
-    font-variant-numeric: tabular-nums;
-    text-shadow: 0 2px 0 rgba(0,0,0,.3);
-  }
-  .score .big{font-size:28px; line-height:1}
+  .hud{position:fixed; inset:0; pointer-events:none; z-index:3}
+  .row{display:flex; align-items:center; justify-content:space-between;
+    padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 10px 12px; gap:8px}
+  .score{pointer-events:none; font-variant-numeric:tabular-nums; text-align:center}
+  .score .big{font-size:28px; font-weight:800; text-shadow:0 2px 0 rgba(0,0,0,.35)}
   .score .small{font-size:12px; color:var(--muted)}
+
   .btn{
-    pointer-events:auto;
-    -webkit-tap-highlight-color: transparent;
-    appearance:none; border:0; border-radius:12px;
-    padding:12px 14px; min-width:44px; min-height:44px;
-    background:#151c35; color:var(--fg); box-shadow:var(--shadow);
-    font-weight:600; font-size:14px; display:inline-flex; align-items:center; gap:8px;
+    pointer-events:auto; -webkit-tap-highlight-color:transparent;
+    appearance:none; border:0; border-radius:14px; min-width:44px; min-height:44px;
+    padding:12px 14px; font-weight:700; color:#fff; background:var(--chip); box-shadow:var(--shadow);
+    display:inline-flex; align-items:center; justify-content:center; gap:8px; font-size:14px;
   }
   .btn:active{transform:translateY(1px)}
-  .btn.ghost{background:#0f1530}
-  .btn.red{background: #2a0f16; color:#ffd6d6}
+  .btn.ghost{background:var(--chip2)}
+  .btn.red{background:#2a0f16; color:#ffd6d6}
   .btn.green{background:#0e2a1d; color:#d6ffea}
-  .cluster{display:flex; gap:8px}
-  /* Bottom center CTA when idle */
-  .bottom-cta{
-    position:fixed; left:50%; transform:translateX(-50%);
-    bottom:calc(env(safe-area-inset-bottom,0px) + 18px);
-    pointer-events:none;
-  }
-  .bottom-cta .btn{pointer-events:auto; font-size:16px; padding:14px 18px}
+
+  /* Big Start CTA: lifted above any overlay to avoid “dead” start */
+  .bottom-cta{position:fixed; left:50%; transform:translateX(-50%);
+    bottom:calc(env(safe-area-inset-bottom,0px) + 18px); z-index:9; pointer-events:none}
+  .bottom-cta .btn{pointer-events:auto; font-size:16px; padding:16px 22px; border-radius:16px}
+
   /* Overlays */
-  .overlay{
-    position:fixed; inset:0; display:grid; place-items:center;
-    background:rgba(5,8,20,.64); backdrop-filter: blur(6px);
-    padding:24px; z-index:5;
-  }
-  .panel{
-    width:min(92vw, 520px); border-radius:16px; background:#0e1735; color:var(--fg);
-    box-shadow: var(--shadow); padding:20px;
-  }
-  .panel h1{margin:0 0 6px 0; font-size:22px}
+  .overlay{position:fixed; inset:0; display:grid; place-items:center;
+    background:rgba(5,8,20,.64); backdrop-filter:blur(6px); padding:24px; z-index:8}
+  .panel{width:min(92vw,520px); border-radius:18px; background:#0e1735; box-shadow:var(--shadow); padding:20px}
+  .panel h1{margin:0 0 4px 0; font-size:22px}
   .panel p{margin:8px 0; color:var(--muted)}
   .panel .actions{display:flex; gap:10px; margin-top:14px; flex-wrap:wrap}
-  .tag{
-    display:inline-block; font-size:12px; padding:6px 10px; border-radius:999px; background:#0b132b; color:var(--muted); margin-right:6px; margin-top:6px;
-  }
-  .countdown{
-    position:fixed; inset:0; display:grid; place-items:center; z-index:4; pointer-events:none;
-    font-weight:900; font-size:18vw; line-height:1; color:#ffffff;
-    text-shadow: 0 10px 40px rgba(0,0,0,.55);
-  }
-  /* Thumb lanes hint */
-  .lanes{
-    position:fixed; inset:0; display:flex; opacity:.05; pointer-events:none;
-  }
-  .lanes > div{flex:1; border-left:1px dashed #fff; border-right:1px dashed #fff}
-  @media (max-width:420px){
-    .score .big{font-size:24px}
-    .btn{padding:10px 12px}
-  }
+  .tag{display:inline-block; font-size:12px; padding:6px 10px; border-radius:999px; background:#0b132b; color:var(--muted); margin-right:6px; margin-top:6px}
+
+  /* Countdown */
+  .countdown{position:fixed; inset:0; display:grid; place-items:center; z-index:6; pointer-events:none;
+    font-weight:900; font-size:18vw; line-height:1; color:#fff; text-shadow:0 10px 40px rgba(0,0,0,.55)}
+
+  /* Top speed meter */
+  .meter{position:fixed; top:calc(env(safe-area-inset-top,0px) + 60px); left:50%; transform:translateX(-50%);
+    width:min(70vw,420px); height:8px; background:rgba(255,255,255,.08); border-radius:999px; overflow:hidden; z-index:3}
+  .meter>i{display:block; height:100%; width:0%; background:linear-gradient(90deg,#7cf8ff,#ffd86b,#ff8ab5); transition:width .15s}
+
+  @media (max-width:420px){ .score .big{font-size:24px} .btn{padding:10px 12px} }
 </style>
 </head>
 <body>
 <div id="wrap">
   <canvas id="game"></canvas>
 
-  <!-- faint lanes to hint left/right thumb zones -->
-  <div class="lanes" aria-hidden="true">
-    <div></div><div></div>
-  </div>
+  <div class="lanes" aria-hidden="true"><div></div><div></div></div>
 
   <div class="hud" aria-live="polite">
     <div class="row">
@@ -117,30 +88,30 @@
       </div>
       <div class="score">
         <div class="big"><span id="score">0</span></div>
-        <div class="small">Best <span id="best">0</span></div>
+        <div class="small">Best <span id="best">0</span> • Lv <span id="lvl">1</span></div>
       </div>
       <div class="cluster">
         <button class="btn" id="btnPause" aria-label="Pause">⏸️</button>
         <button class="btn red" id="btnRestart" aria-label="Restart">↻</button>
       </div>
     </div>
+    <div class="meter"><i id="speedBar"></i></div>
     <div class="bottom-cta">
-      <button class="btn green" id="btnStart">▶ Start</button>
+      <button class="btn green" id="btnStart">▶ Tap to Start</button>
     </div>
   </div>
 
-  <!-- Countdown -->
   <div id="countdown" class="countdown" hidden>3</div>
 
-  <!-- Help / How to play -->
+  <!-- Help -->
   <div id="help" class="overlay" hidden>
     <div class="panel">
       <h1>Two-Thumb Pong</h1>
-      <p>Use both thumbs at the same time. Touch and drag in the left and right halves of the screen to move each puck up and down. Keep the ball bouncing between them. Each successful bounce = +1.</p>
+      <p>Hold your phone. Use both thumbs. Touch and drag anywhere on the left and right halves to move each puck up and down. Keep the ball bouncing between them. Each hit = +1.</p>
       <div>
-        <span class="tag">Tip: touch anywhere on each side</span>
-        <span class="tag">Hits add “spin” for control</span>
-        <span class="tag">Speed ramps up</span>
+        <span class="tag">Spin control on off-center hits</span>
+        <span class="tag">Speed ramps by level</span>
+        <span class="tag">Pause anytime</span>
       </div>
       <div class="actions">
         <button class="btn green" id="helpPlay">Play</button>
@@ -153,10 +124,11 @@
   <div id="settings" class="overlay" hidden>
     <div class="panel">
       <h1>Settings</h1>
-      <p>Adjust preferences.</p>
+      <p>Sound, vibration, data.</p>
       <div class="actions">
         <button class="btn" id="toggleSound">🔊 Sound: <span id="soundState">On</span></button>
         <button class="btn" id="toggleVib">📳 Vibration: <span id="vibState">On</span></button>
+        <button class="btn ghost" id="resetBest">🗑️ Reset Best</button>
         <button class="btn ghost" id="settingsClose">Close</button>
       </div>
     </div>
@@ -167,9 +139,10 @@
     <div class="panel">
       <h1>Game Over</h1>
       <p>Score: <strong id="finalScore">0</strong></p>
-      <p>Best: <strong id="finalBest">0</strong></p>
+      <p>Best: <strong id="finalBest">0</strong> <span id="newBestTag" class="tag" style="display:none">New Best!</span></p>
       <div class="actions">
         <button class="btn green" id="again">Play Again</button>
+        <button class="btn" id="shareBtn" style="display:none">📤 Share</button>
         <button class="btn ghost" id="overClose">Close</button>
       </div>
     </div>
@@ -177,11 +150,16 @@
 </div>
 
 <script>
-/* ---------- Utility / Audio / Haptics ---------- */
+/* ---------- Storage / UX ---------- */
 const store = {
-  get(k, d){ try{ const v = localStorage.getItem(k); return v===null?d:JSON.parse(v);}catch{ return d } },
-  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
+  get(k, d){ try{const v=localStorage.getItem(k); return v===null?d:JSON.parse(v)}catch{ return d } },
+  set(k, v){ try{localStorage.setItem(k, JSON.stringify(v))}catch{} }
 };
+const settings = {
+  sound: store.get('tt_sound', true),
+  vibrate: store.get('tt_vibe', true),
+};
+let best = store.get('tt_best', 0);
 let audioCtx = null;
 function ping(freq=440, dur=0.06, vol=0.08){
   if(!settings.sound) return;
@@ -190,7 +168,7 @@ function ping(freq=440, dur=0.06, vol=0.08){
     const t0 = audioCtx.currentTime;
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
-    osc.type = 'sine'; osc.frequency.value = freq;
+    osc.type='sine'; osc.frequency.value=freq;
     gain.gain.setValueAtTime(0, t0);
     gain.gain.linearRampToValueAtTime(vol, t0+0.005);
     gain.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
@@ -202,380 +180,323 @@ function vibrate(ms=15){ if(settings.vibrate && navigator.vibrate) navigator.vib
 
 /* ---------- DOM ---------- */
 const canvas = document.getElementById('game');
-const ctx = canvas.getContext('2d', { alpha:false, desynchronized:true });
-const $ = sel => document.querySelector(sel);
-const elScore = $('#score'), elBest = $('#best');
-const elStart = $('#btnStart'), elPause = $('#btnPause'), elRestart = $('#btnRestart');
-const elHelp = $('#help'), elSettings = $('#settings'), elGameOver = $('#gameover');
-const elHelpPlay = $('#helpPlay'), elHelpClose=$('#helpClose');
-const elSettingsClose=$('#settingsClose'), elToggleSound=$('#toggleSound'), elSoundState=$('#soundState');
-const elToggleVib=$('#toggleVib'), elVibState=$('#vibState');
+const ctx = canvas.getContext('2d', {alpha:false, desynchronized:true});
+const $ = s => document.querySelector(s);
+const elScore=$('#score'), elBest=$('#best'), elLvl=$('#lvl'), elBar=$('#speedBar');
+const elStart=$('#btnStart'), elPause=$('#btnPause'), elRestart=$('#btnRestart');
 const elBtnHelp=$('#btnHelp'), elBtnSettings=$('#btnSettings');
-const elFinalScore=$('#finalScore'), elFinalBest=$('#finalBest');
-const elAgain=$('#again'), elOverClose=$('#overClose');
-const elCountdown = $('#countdown');
+const elHelp=$('#help'), elSettings=$('#settings'), elGameOver=$('#gameover');
+const elHelpPlay=$('#helpPlay'), elHelpClose=$('#helpClose');
+const elSettingsClose=$('#settingsClose'), elToggleSound=$('#toggleSound'), elSoundState=$('#soundState');
+const elToggleVib=$('#toggleVib'), elVibState=$('#vibState'), elResetBest=$('#resetBest');
+const elFinalScore=$('#finalScore'), elFinalBest=$('#finalBest'), elNewBestTag=$('#newBestTag');
+const elAgain=$('#again'), elOverClose=$('#overClose'), elShare=$('#shareBtn');
+const elCountdown=$('#countdown');
 
-let DPR = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+elBest.textContent = best;
+elSoundState.textContent = settings.sound?'On':'Off';
+elVibState.textContent = settings.vibrate?'On':'Off';
 
 /* ---------- Game State ---------- */
-const settings = {
-  sound: store.get('tt_sound', true),
-  vibrate: store.get('tt_vibe', true),
-};
-let best = store.get('tt_best', 0);
-elBest.textContent = best;
-
 const GameState = { Ready:0, Countdown:1, Playing:2, Paused:3, Over:4 };
 let state = GameState.Ready;
-let score = 0;
-let lastT = 0;
-let raf = null;
-let countdownT = 0;
-let countdownVal = 3;
-let touches = new Map(); // id -> {side:'L'|'R', y}
+let score = 0, level = 1;
+let lastT=0, raf=null;
+let countdownT=0, countdownVal=3;
+let DPR = Math.max(1, Math.min(3, window.devicePixelRatio||1));
+let wakeLock = null;
 
 const world = {
-  w: 0, h: 0, pad: 16,
-  ball: { x:0, y:0, r:10, vx:360, vy:0, speed:360, speedMax:1400 },
-  left:  { x:0, y:0, r:28, color:'#6ee7ff' },
-  right: { x:0, y:0, r:28, color:'#a3ff7e' },
-  wallTop: 0, wallBottom: 0,
-  margin: 22
+  w:0,h:0, margin:22,
+  ball:{x:0,y:0,r:10,vx:360,vy:0,speed:360,speedMax:1500,trail:[]},
+  left:{x:0,y:0,r:30,color:getCSS('--accentL')},
+  right:{x:0,y:0,r:30,color:getCSS('--accentR')},
+  top:0,bottom:0,
 };
+function getCSS(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim() }
 
-/* ---------- Resize / DPR ---------- */
+/* ---------- Resize ---------- */
 function fit(){
-  DPR = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+  DPR = Math.max(1, Math.min(3, window.devicePixelRatio||1));
   const cssW = window.innerWidth, cssH = window.innerHeight;
-  canvas.width = Math.floor(cssW * DPR);
-  canvas.height = Math.floor(cssH * DPR);
-  canvas.style.width = cssW + 'px';
-  canvas.style.height = cssH + 'px';
-  ctx.setTransform(1,0,0,1,0,0);
-  ctx.scale(DPR, DPR);
+  canvas.width = Math.floor(cssW*DPR); canvas.height = Math.floor(cssH*DPR);
+  canvas.style.width = cssW+'px'; canvas.style.height = cssH+'px';
+  ctx.setTransform(1,0,0,1,0,0); ctx.scale(DPR,DPR);
 
   world.w = cssW; world.h = cssH;
-  world.wallTop = 0 + world.margin;
-  world.wallBottom = cssH - world.margin;
-  const edge = 32;
-  world.left.x = edge;
-  world.right.x = cssW - edge;
-  world.left.y = cssH/2;
-  world.right.y = cssH/2;
+  world.top = world.margin; world.bottom = cssH - world.margin;
+  const edge = 36;
+  world.left.x = edge; world.right.x = cssW - edge;
+  world.left.y = cssH/2; world.right.y = cssH/2;
 
-  if(state === GameState.Ready || state === GameState.Over){
-    placeBall(true);
-    render(0); // draw idle frame
-  }
+  if(state===GameState.Ready || state===GameState.Over){ placeBall(true); render(0); }
 }
-window.addEventListener('resize', fit);
+addEventListener('resize', fit, {passive:true});
 fit();
 
 /* ---------- Controls ---------- */
-function openOverlay(el){ el.hidden = false; }
-function closeOverlay(el){ el.hidden = true; }
+function openOverlay(el){ el.hidden=false; }
+function closeOverlay(el){ el.hidden=true; }
 
-elBtnHelp.onclick = () => openOverlay(elHelp);
-elHelpClose.onclick = () => closeOverlay(elHelp);
-elHelpPlay.onclick = () => { closeOverlay(elHelp); startFlow(); };
+elBtnHelp.onclick = ()=> openOverlay(elHelp);
+elHelpClose.onclick = ()=> closeOverlay(elHelp);
+elHelpPlay.onclick = ()=> { closeOverlay(elHelp); startFlow(); };
 
-elBtnSettings.onclick = () => { elSoundState.textContent = settings.sound?'On':'Off'; elVibState.textContent = settings.vibrate?'On':'Off'; openOverlay(elSettings); };
-elSettingsClose.onclick = () => closeOverlay(elSettings);
-elToggleSound.onclick = () => { settings.sound = !settings.sound; store.set('tt_sound', settings.sound); elSoundState.textContent = settings.sound?'On':'Off'; ping(660, .05, .12); };
-elToggleVib.onclick = () => { settings.vibrate = !settings.vibrate; store.set('tt_vibe', settings.vibrate); elVibState.textContent = settings.vibrate?'On':'Off'; vibrate(12); };
+elBtnSettings.onclick = ()=> openOverlay(elSettings);
+elSettingsClose.onclick = ()=> closeOverlay(elSettings);
+elToggleSound.onclick = ()=> { settings.sound=!settings.sound; store.set('tt_sound',settings.sound); elSoundState.textContent=settings.sound?'On':'Off'; ping(660,.05,.12); };
+elToggleVib.onclick = ()=> { settings.vibrate=!settings.vibrate; store.set('tt_vibe',settings.vibrate); elVibState.textContent=settings.vibrate?'On':'Off'; vibrate(15); };
+elResetBest.onclick = ()=> { best=0; store.set('tt_best',0); elBest.textContent='0'; };
 
-elStart.onclick = () => startFlow();
-elRestart.onclick = () => resetGame(true);
-elPause.onclick = () => togglePause();
-elAgain.onclick = () => { closeOverlay(elGameOver); resetGame(true); };
-elOverClose.onclick = () => closeOverlay(elGameOver);
+elStart.onclick = ()=> startFlow();        /* FIX: start CTA always works (z-index 9) */
+elRestart.onclick = ()=> resetGame(true);
+elPause.onclick = ()=> togglePause();
+elAgain.onclick = ()=> { closeOverlay(elGameOver); resetGame(true); };
+elOverClose.onclick = ()=> closeOverlay(elGameOver);
 
+if(navigator.share) elShare.style.display='inline-flex';
+elShare.onclick = async ()=>{
+  try{ await navigator.share({title:'Two-Thumb Pong', text:`I scored ${score} in Two-Thumb Pong!`, url:location.href}); }catch{}
+};
+
+/* ---------- Wake Lock (best effort) ---------- */
+async function lockScreen(){ try{ if('wakeLock' in navigator){ wakeLock = await navigator.wakeLock.request('screen'); } }catch{} }
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible' && state===GameState.Paused) scheduleLoop(); });
+
+/* ---------- Start / Flow ---------- */
 function startFlow(){
-  if(state === GameState.Playing) return;
-  closeOverlay(elHelp);
-  closeOverlay(elSettings);
-  closeOverlay(elGameOver);
-  elStart.blur();
+  if(state===GameState.Playing || state===GameState.Countdown) return;
+  closeOverlay(elHelp); closeOverlay(elSettings); closeOverlay(elGameOver);
   startCountdown();
+  lockScreen();
 }
 function startCountdown(){
   state = GameState.Countdown;
-  countdownVal = 3;
-  elCountdown.hidden = false;
-  elCountdown.textContent = countdownVal;
-  countdownT = performance.now();
-  ping(660, .08, .12);
+  countdownVal = 3; elCountdown.hidden=false; elCountdown.textContent = countdownVal;
+  countdownT = performance.now(); ping(660,.08,.12);
   scheduleLoop();
 }
 function beginPlay(){
   state = GameState.Playing;
-  elCountdown.hidden = true;
+  elCountdown.hidden=true;
   lastT = performance.now();
-  ping(880, .06, .12);
+  ping(900,.06,.12);
 }
 function togglePause(){
-  if(state === GameState.Playing){
-    state = GameState.Paused;
-    elPause.textContent = '▶️';
-  }else if(state === GameState.Paused){
-    state = GameState.Playing;
-    lastT = performance.now();
-    elPause.textContent = '⏸️';
-    scheduleLoop();
-  }
+  if(state===GameState.Playing){ state=GameState.Paused; elPause.textContent='▶️'; }
+  else if(state===GameState.Paused){ state=GameState.Playing; lastT=performance.now(); elPause.textContent='⏸️'; scheduleLoop(); }
 }
 function gameOver(){
   state = GameState.Over;
-  ping(160, .12, .15); vibrate(40);
+  ping(160,.12,.15); vibrate(40);
   best = Math.max(best, score); store.set('tt_best', best);
   elFinalScore.textContent = score; elFinalBest.textContent = best;
-  elBest.textContent = best;
+  elBest.textContent = best; elNewBestTag.style.display = (score===best && score>0)?'inline-block':'none';
   openOverlay(elGameOver);
 }
-
 function resetGame(andCountdown=false){
-  score = 0; elScore.textContent = score;
-  placeBall(true);
-  state = GameState.Ready;
-  elPause.textContent = '⏸️';
+  score=0; level=1; elScore.textContent=score; elLvl.textContent=level; elBar.style.width='0%';
+  world.ball.trail.length=0; placeBall(true);
+  state=GameState.Ready; elPause.textContent='⏸️';
   if(andCountdown) startCountdown(); else render(0);
 }
-
 function placeBall(randomDir=false){
-  world.ball.x = world.w/2;
-  world.ball.y = world.h/2;
-  world.ball.speed = 360;
-  const sign = randomDir ? (Math.random()<0.5?-1:1) : 1;
-  world.ball.vx = sign * world.ball.speed;
-  world.ball.vy = (Math.random()*2 - 1) * 120;
+  const b=world.ball;
+  b.x = world.w/2; b.y = world.h/2; b.r = 11;
+  b.speed = 360; b.speedMax = 1600;
+  const dir = randomDir ? (Math.random()<0.5?-1:1) : 1;
+  b.vx = dir * b.speed; b.vy = (Math.random()*2-1)*120;
 }
 
-/* ---------- Touch / Mouse for both sides ---------- */
+/* ---------- Input (touch + mouse for dev) ---------- */
 function sideFromX(x){ return x < (world.w/2) ? 'L' : 'R'; }
+function clampY(y){ return Math.max(world.top, Math.min(world.bottom, y)); }
+function movePuck(side, y){ if(side==='L') world.left.y = clampY(y); else world.right.y = clampY(y); }
 
-function updatePuck(side, y){
-  y = Math.max(world.wallTop, Math.min(world.wallBottom, y));
-  if(side==='L') world.left.y = y; else world.right.y = y;
-}
-function handleStart(id,x,y){
-  const side = sideFromX(x);
-  touches.set(id, {side, y});
-  updatePuck(side, y);
-}
-function handleMove(id,x,y){
-  const t = touches.get(id);
-  if(!t) return;
-  t.y = y; updatePuck(t.side, y);
-}
-function handleEnd(id){
-  touches.delete(id);
-}
-
-canvas.addEventListener('touchstart', (e)=>{
+canvas.addEventListener('touchstart', e=>{
   e.preventDefault();
-  for(const touch of e.changedTouches){
-    const rect = canvas.getBoundingClientRect();
-    handleStart(touch.identifier, touch.clientX - rect.left, touch.clientY - rect.top);
-  }
-}, {passive:false});
-canvas.addEventListener('touchmove', (e)=>{
-  e.preventDefault();
-  for(const touch of e.changedTouches){
-    const rect = canvas.getBoundingClientRect();
-    handleMove(touch.identifier, touch.clientX - rect.left, touch.clientY - rect.top);
-  }
-}, {passive:false});
-canvas.addEventListener('touchend', (e)=>{
-  e.preventDefault();
-  for(const touch of e.changedTouches) handleEnd(touch.identifier);
-}, {passive:false});
-canvas.addEventListener('touchcancel', (e)=>{
-  e.preventDefault();
-  for(const touch of e.changedTouches) handleEnd(touch.identifier);
-}, {passive:false});
-
-/* Mouse support for desktop testing */
-let mouseDownL=false, mouseDownR=false;
-canvas.addEventListener('mousedown', e=>{
   const rect = canvas.getBoundingClientRect();
-  const x = e.clientX - rect.left, y = e.clientY - rect.top;
-  const side = sideFromX(x);
-  if(side==='L') mouseDownL=true; else mouseDownR=true;
-  updatePuck(side, y);
+  for(const t of e.changedTouches){
+    const x=t.clientX-rect.left, y=t.clientY-rect.top;
+    movePuck(sideFromX(x), y);
+  }
+},{passive:false});
+canvas.addEventListener('touchmove', e=>{
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  for(const t of e.changedTouches){
+    const x=t.clientX-rect.left, y=t.clientY-rect.top;
+    movePuck(sideFromX(x), y);
+  }
+},{passive:false});
+
+let mouseL=false, mouseR=false;
+canvas.addEventListener('mousedown', e=>{
+  const r = canvas.getBoundingClientRect(); const x=e.clientX-r.left, y=e.clientY-r.top;
+  if(sideFromX(x)==='L') mouseL=true; else mouseR=true; movePuck(sideFromX(x), y);
 });
 canvas.addEventListener('mousemove', e=>{
-  const rect = canvas.getBoundingClientRect();
-  const x = e.clientX - rect.left, y = e.clientY - rect.top;
-  if(mouseDownL && x < world.w/2) updatePuck('L', y);
-  if(mouseDownR && x >= world.w/2) updatePuck('R', y);
+  const r = canvas.getBoundingClientRect(); const x=e.clientX-r.left, y=e.clientY-r.top;
+  if(mouseL && x<world.w/2) movePuck('L', y);
+  if(mouseR && x>=world.w/2) movePuck('R', y);
 });
-window.addEventListener('mouseup', ()=>{
-  mouseDownL=false; mouseDownR=false;
-});
+addEventListener('mouseup', ()=>{ mouseL=false; mouseR=false; });
 
 /* ---------- Physics ---------- */
+function onHit(sideDy){
+  score++; elScore.textContent=score;
+  // Level up every 8 hits
+  const b=world.ball;
+  if(score%8===0){ level++; elLvl.textContent=level; b.speedMax+=40; }
+  elBar.style.width = Math.min(100, Math.round((b.speed/b.speedMax)*100)) + '%';
+  ping(740,.04,.09); vibrate(12);
+  spawnBurst(b.x, b.y, sideDy>0?world.right.color:world.left.color);
+}
+function onMiss(){ gameOver(); }
+
 function step(dt){
-  if(state === GameState.Countdown){
-    const now = performance.now();
-    if(now - countdownT >= 1000){
-      countdownT += 1000;
-      countdownVal--;
-      if(countdownVal>0){
-        elCountdown.textContent = countdownVal;
-        ping(660, .06, .12);
-      }else{
-        beginPlay();
-      }
+  if(state===GameState.Countdown){
+    const now=performance.now();
+    if(now-countdownT>=1000){
+      countdownT+=1000; countdownVal--;
+      if(countdownVal>0){ elCountdown.textContent=countdownVal; ping(660,.06,.12); }
+      else{ beginPlay(); }
     }
     return;
   }
-  if(state !== GameState.Playing) return;
+  if(state!==GameState.Playing) return;
 
-  // move ball
-  world.ball.x += world.ball.vx * dt;
-  world.ball.y += world.ball.vy * dt;
+  const b=world.ball, L=world.left, R=world.right;
 
-  // collide top/bottom
-  if(world.ball.y - world.ball.r <= world.wallTop){
-    world.ball.y = world.wallTop + world.ball.r;
-    world.ball.vy = Math.abs(world.ball.vy);
-    ping(520, .03, .07);
-  }
-  if(world.ball.y + world.ball.r >= world.wallBottom){
-    world.ball.y = world.wallBottom - world.ball.r;
-    world.ball.vy = -Math.abs(world.ball.vy);
-    ping(520, .03, .07);
-  }
+  // Move ball
+  b.x += b.vx*dt; b.y += b.vy*dt;
 
-  // collide left puck
-  const L = world.left, R = world.right, b = world.ball;
-  // Check near left edge
-  if(b.vx < 0 && b.x - b.r <= L.x + L.r){
-    const dy = b.y - L.y;
-    if(Math.abs(dy) <= L.r + b.r){
-      // reflect
-      b.x = L.x + L.r + b.r;
-      b.vx = Math.abs(b.vx);
-      // add spin
-      b.vy += dy * 4.2;
-      // speed up
-      b.speed = Math.min(world.ball.speedMax, Math.hypot(b.vx, b.vy) * 1.045);
-      const ang = Math.atan2(b.vy, b.vx);
-      b.vx = Math.cos(ang) * b.speed;
-      b.vy = Math.sin(ang) * b.speed;
-      onHit();
+  // Trail
+  b.trail.push({x:b.x,y:b.y, t:0.35});
+  if(b.trail.length>24) b.trail.shift();
+  for(const p of b.trail){ p.t -= dt; }
+  while(b.trail.length && b.trail[0].t<=0) b.trail.shift();
+
+  // Walls
+  if(b.y-b.r<=world.top){ b.y=world.top+b.r; b.vy=Math.abs(b.vy); ping(520,.03,.07); }
+  if(b.y+b.r>=world.bottom){ b.y=world.bottom-b.r; b.vy=-Math.abs(b.vy); ping(520,.03,.07); }
+
+  // Left puck
+  if(b.vx<0 && b.x-b.r<=L.x+L.r){
+    const dy=b.y-L.y;
+    if(Math.abs(dy)<=L.r+b.r){
+      b.x=L.x+L.r+b.r; b.vx=Math.abs(b.vx);
+      b.vy += dy*4.2; accelerate(b,1.045); onHit(dy);
     }
   }
-  // collide right puck
-  if(b.vx > 0 && b.x + b.r >= R.x - R.r){
-    const dy = b.y - R.y;
-    if(Math.abs(dy) <= R.r + b.r){
-      b.x = R.x - R.r - b.r;
-      b.vx = -Math.abs(b.vx);
-      b.vy += dy * 4.2;
-      b.speed = Math.min(world.ball.speedMax, Math.hypot(b.vx, b.vy) * 1.045);
-      const ang = Math.atan2(b.vy, b.vx);
-      b.vx = Math.cos(ang) * b.speed;
-      b.vy = Math.sin(ang) * b.speed;
-      onHit();
+  // Right puck
+  if(b.vx>0 && b.x+b.r>=R.x-R.r){
+    const dy=b.y-R.y;
+    if(Math.abs(dy)<=R.r+b.r){
+      b.x=R.x-R.r-b.r; b.vx=-Math.abs(b.vx);
+      b.vy += dy*4.2; accelerate(b,1.045); onHit(dy);
     }
   }
 
-  // miss -> out of bounds
-  if(b.x + b.r < 0 || b.x - b.r > world.w){
-    onMiss();
+  // Miss
+  if(b.x+b.r<0 || b.x-b.r>world.w) onMiss();
+
+  // Particles
+  updateParticles(dt);
+}
+function accelerate(b,f){
+  b.speed = Math.min(b.speedMax, Math.hypot(b.vx,b.vy)*f);
+  const ang=Math.atan2(b.vy,b.vx);
+  b.vx=Math.cos(ang)*b.speed; b.vy=Math.sin(ang)*b.speed;
+}
+
+/* ---------- Particles ---------- */
+const particles=[];
+function spawnBurst(x,y,color){
+  for(let i=0;i<16;i++){
+    const a = Math.random()*Math.PI*2;
+    particles.push({
+      x,y, vx:Math.cos(a)*(60+Math.random()*160), vy:Math.sin(a)*(60+Math.random()*160),
+      life:0.35+Math.random()*0.25, color, r:1+Math.random()*2
+    });
   }
 }
-function onHit(){
-  score++; elScore.textContent = score;
-  ping(740, .04, .09); vibrate(10);
-}
-function onMiss(){
-  gameOver();
+function updateParticles(dt){
+  for(const p of particles){ p.x+=p.vx*dt; p.y+=p.vy*dt; p.vx*=0.98; p.vy*=0.98; p.life-=dt; }
+  while(particles.length && particles[0].life<=0) particles.shift();
 }
 
 /* ---------- Render ---------- */
 function render(dt){
-  const w = world.w, h = world.h;
-  // background gradient
-  const g = ctx.createLinearGradient(0,0,0,h);
-  g.addColorStop(0, '#0b1020');
-  g.addColorStop(1, '#111a3a');
-  ctx.fillStyle = g; ctx.fillRect(0,0,w,h);
+  const w=world.w, h=world.h;
 
-  // side separators (faint)
-  ctx.globalAlpha = 0.08;
-  ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1;
-  ctx.setLineDash([6,8]);
-  ctx.beginPath(); ctx.moveTo(w/2, 0); ctx.lineTo(w/2, h); ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.globalAlpha = 1;
+  // BG gradient
+  const g=ctx.createLinearGradient(0,0,0,h);
+  g.addColorStop(0, getCSS('--bg1')); g.addColorStop(1, getCSS('--bg2'));
+  ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
 
-  // walls
-  ctx.globalAlpha = 0.12;
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, world.wallTop-4, w, 4);
-  ctx.fillRect(0, world.wallBottom, w, 4);
-  ctx.globalAlpha = 1;
+  // Center dashed line and walls
+  ctx.globalAlpha=.1; ctx.strokeStyle='#fff'; ctx.lineWidth=1; ctx.setLineDash([6,8]);
+  ctx.beginPath(); ctx.moveTo(w/2,0); ctx.lineTo(w/2,h); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha=1;
+  ctx.globalAlpha=.12; ctx.fillStyle='#fff';
+  ctx.fillRect(0, world.top-4, w, 4); ctx.fillRect(0, world.bottom, w, 4); ctx.globalAlpha=1;
 
-  // pucks
+  // Pucks
   drawPuck(world.left.x, world.left.y, world.left.r, world.left.color);
   drawPuck(world.right.x, world.right.y, world.right.r, world.right.color);
 
-  // ball
+  // Ball trail
+  for(let i=0;i<world.ball.trail.length;i++){
+    const p=world.ball.trail[i]; const a=Math.max(0, p.t)/0.35;
+    ctx.globalAlpha=a*0.5; drawBall(p.x,p.y, world.ball.r*(0.7+a*0.3)); ctx.globalAlpha=1;
+  }
+  // Ball
   drawBall(world.ball.x, world.ball.y, world.ball.r);
 
-  // subtle trail or glow
+  // Particles
+  for(const p of particles){
+    ctx.globalAlpha = Math.max(0, p.life*2.2);
+    ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha=1;
 }
-function drawPuck(x,y,r, color){
-  ctx.shadowColor = color; ctx.shadowBlur = 20;
-  ctx.fillStyle = color;
-  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();
-  ctx.shadowBlur = 0;
+function drawPuck(x,y,r,color){
+  ctx.shadowColor=color; ctx.shadowBlur=20;
+  ctx.fillStyle=color; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
 }
 function drawBall(x,y,r){
-  ctx.shadowColor = '#ffd86b'; ctx.shadowBlur = 18;
-  const radial = ctx.createRadialGradient(x-r/3, y-r/3, r*0.2, x, y, r);
-  radial.addColorStop(0, '#fff6d0');
-  radial.addColorStop(1, '#ffb703');
-  ctx.fillStyle = radial;
-  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();
-  ctx.shadowBlur = 0;
+  ctx.shadowColor=getCSS('--ball'); ctx.shadowBlur=18;
+  const grd=ctx.createRadialGradient(x-r/3,y-r/3,r*0.2,x,y,r);
+  grd.addColorStop(0,'#fff6d0'); grd.addColorStop(1,getCSS('--ball'));
+  ctx.fillStyle=grd; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
 }
 
 /* ---------- Loop ---------- */
 function loop(t){
-  if(state === GameState.Paused){ raf = null; return; }
-  if(!lastT) lastT = t;
-  const dt = Math.min(0.033, (t - lastT)/1000);
-  lastT = t;
-  step(dt);
-  render(dt);
-  scheduleLoop();
+  if(state===GameState.Paused){ raf=null; return; }
+  if(!lastT) lastT=t;
+  const dt=Math.min(0.033,(t-lastT)/1000); lastT=t;
+  step(dt); render(dt); scheduleLoop();
 }
-function scheduleLoop(){ if(!raf) raf = requestAnimationFrame((ts)=>{ raf=null; loop(ts); }); }
+function scheduleLoop(){ if(!raf) raf = requestAnimationFrame(ts=>{ raf=null; loop(ts); }); }
 
-/* ---------- Init ---------- */
-placeBall(true);
-render(0);
-
-/* Prevent iOS zoom gesture */
+/* ---------- Boot ---------- */
+placeBall(true); render(0);
 document.addEventListener('gesturestart', e=>e.preventDefault());
 document.addEventListener('dblclick', e=>e.preventDefault(), {passive:false});
+addEventListener('pointerdown', ()=>{ if(audioCtx && audioCtx.state==='suspended') audioCtx.resume(); }, {once:true});
 
-/* Start on first user interaction for audio unlock */
-window.addEventListener('pointerdown', ()=>{ if(audioCtx && audioCtx.state==='suspended') audioCtx.resume(); }, {once:true});
-
-/* Optional: show help on very first visit */
+/* First visit helper: show Help but Start works regardless due to z-index 9 */
 if(!store.get('tt_seen', false)){ openOverlay(elHelp); store.set('tt_seen', true); }
 
-/* Keyboard helpers for desktop */
-window.addEventListener('keydown', e=>{
+/* Keyboard for desktop testing */
+addEventListener('keydown', e=>{
   if(e.code==='Space'){ if(state===GameState.Playing) togglePause(); else startFlow(); }
   if(e.code==='KeyR') resetGame(true);
 });
 
-/* ---------- End ---------- */
+/* ---------- Drawing once if not running ---------- */
+render(0);
 </script>
 </body>
 </html>
