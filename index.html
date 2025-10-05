@@ -58,6 +58,16 @@
   @keyframes pop{0%{transform:scale(.4);opacity:0}60%{transform:scale(1.1);opacity:1}100%{transform:scale(1);opacity:.9}}
   #danger{position:absolute; inset:0; pointer-events:none; background:radial-gradient(120vw 120vh at 50% 50%, transparent 40%, rgba(255,75,120,.30) 75%); opacity:0; transition:opacity .12s}
   #toast{position:absolute; left:50%; top:12px; transform:translateX(-50%); background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.25); padding:10px 14px; border-radius:12px; font-weight:800; backdrop-filter:blur(8px); display:none}
+
+  /* Portrait-only blocker overlay (covers whole app) */
+  #rotateOverlay{
+    position:fixed; inset:0; z-index:9999; display:none;
+    align-items:center; justify-content:center; text-align:center;
+    background:rgba(6,8,18,.92); color:#fff; padding:24px;
+  }
+  #rotateOverlay .msg{max-width:520px}
+  #rotateOverlay h1{margin:0 0 10px; font-size:20px}
+  #rotateOverlay p{margin:0; color:var(--muted)}
 </style>
 </head>
 <body>
@@ -128,6 +138,14 @@
   <footer id="foot">Use both thumbs. Touch left/right halves to move each puck.</footer>
 </div>
 
+<!-- Portrait-only blocker -->
+<div id="rotateOverlay">
+  <div class="msg">
+    <h1>Portrait only</h1>
+    <p>Rotate your device upright to play.</p>
+  </div>
+</div>
+
 <script>
 (() => {
   // --- hoisted utils ---
@@ -161,6 +179,8 @@
   const toast = document.getElementById('toast');
   const lblLeft = document.getElementById('lblLeft');
   const lblRight = document.getElementById('lblRight');
+
+  const rotateOverlay = document.getElementById('rotateOverlay');
 
   // Settings
   let muted = (localStorage.getItem('two_thumb_muted')||'1') === '1';
@@ -218,7 +238,33 @@
     rightY= rightY? clamp(rightY, paddleR, H-paddleR) : H/2;
   }
   new ResizeObserver(resize).observe(gameEl);
-  window.addEventListener('orientationchange', ()=>setTimeout(resize, 250), {passive:true});
+  window.addEventListener('orientationchange', ()=>{ setTimeout(resize, 250); updateOrientationBlock(); }, {passive:true});
+
+  // Try to lock to portrait where supported (may require user gesture/fullscreen; safe no-op if not supported)
+  async function tryLockOrientation(){
+    if(screen.orientation && screen.orientation.lock){
+      try{ await screen.orientation.lock('portrait'); }catch(e){}
+    }
+  }
+  if(screen.orientation && screen.orientation.addEventListener){
+    screen.orientation.addEventListener('change', updateOrientationBlock);
+  }
+
+  // Portrait enforcement: block gameplay in landscape
+  function isMobile(){
+    return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  }
+  function inPortrait(){
+    // Fallback if matchMedia not reliable
+    return (window.matchMedia && window.matchMedia('(orientation: portrait)').matches) || (window.innerHeight >= window.innerWidth);
+  }
+  function updateOrientationBlock(){
+    const block = isMobile() && !inPortrait();
+    rotateOverlay.style.display = block ? 'flex' : 'none';
+    if(block){
+      if(running){ togglePause(true); }
+    }
+  }
 
   // Colors
   function puckColors(){ const t = performance.now()/1000, h=(t*30)%360;
@@ -269,8 +315,10 @@
     syncPauseBtn();
   }
   async function begin(){
+    if(isMobile() && !inPortrait()){ updateOrientationBlock(); return; }
     startOverlay.style.display='none'; gameOverOverlay.style.display='none';
     serve(); countdown.style.display='flex';
+    tryLockOrientation();
     for(let n=3;n>=1;n--){ countNum.textContent=n; countNum.style.animation='none'; void countNum.offsetWidth; countNum.style.animation='pop .8s ease both'; if(!muted) ping(520+(3-n)*120,0.07,'sine'); await sleep(900); }
     countdown.style.display='none'; tPrev=performance.now(); running=true; syncPauseBtn(); loop();
   }
@@ -409,7 +457,10 @@
   function onMiss(){ vibrate([50]); ping(240,0.12,'triangle'); shakeT=120; end(); }
   function showToast(){ toast.style.display='block'; toast.style.opacity='1'; setTimeout(()=>toast.style.opacity='0',900); setTimeout(()=>toast.style.display='none',1400); }
 
-  document.addEventListener('visibilitychange', ()=>{ if(document.hidden){ running=false; } else if(!gameOver && startOverlay.style.display==='none' && !paused){ tPrev=performance.now(); running=true; requestAnimationFrame(loop);} });
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.hidden){ running=false; }
+    else if(!gameOver && startOverlay.style.display==='none' && !paused){ tPrev=performance.now(); running=true; requestAnimationFrame(loop); }
+  });
 
   // Buttons
   startBtn.addEventListener('click', begin);
@@ -422,13 +473,13 @@
     if(!muted) ping(880,0.05);
   });
   muteBtn.textContent='Sound: ' + (muted ? 'Off' : 'On'); muteBtn.setAttribute('aria-pressed', String(!muted));
-  syncPauseBtn();
 
   // Tap canvas to start
   canvas.addEventListener('click', ()=>{ if(startOverlay.style.display!=='none' && !running) begin(); });
 
-  // Initial layout + splash
+  // Initial layout + splash + orientation gate
   resize();
+  updateOrientationBlock();
   (function splash(){
     ctx.clearRect(0,0,W,H);
     const leftX=16+Math.max(24,unit*0.065), rightX=W-16-Math.max(24,unit*0.065);
@@ -437,7 +488,7 @@
     drawPuck(rightX,H*0.5,Math.max(24,unit*0.065),rightCol);
     const r=Math.max(10,unit*0.018);
     ctx.fillStyle='#ffe98a'; ctx.beginPath(); ctx.arc(W*0.5,H*0.5,r,0,Math.PI*2); ctx.fill();
-    setTimeout(()=>{ lblLeft.style.opacity=0; lblRight.style.opacity=0; },1500);
+    setTimeout(()=>{ document.getElementById('lblLeft').style.opacity=0; document.getElementById('lblRight').style.opacity=0; },1500);
   })();
 })();
 </script>
