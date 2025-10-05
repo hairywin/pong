@@ -18,7 +18,8 @@
   }
   @keyframes spin{to{transform:rotate(360deg)}}
   #app{height:100%;display:flex;flex-direction:column}
-  /* HUD now outside the game area */
+
+  /* HUD above the game */
   #hud{flex:0 0 auto; padding:calc(8px + env(safe-area-inset-top)) 12px 10px; display:flex; align-items:center; justify-content:space-between; gap:12px}
   #hudL{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
   #score{font-weight:800;font-size:22px;letter-spacing:.4px}
@@ -123,6 +124,12 @@
 
 <script>
 (() => {
+  // --- hoisted utils (fix for Start not binding) ---
+  function clamp(v,min,max){ return v<min?min:v>max?max:v; }
+  function lerp(a,b,t){ return a+(b-a)*t; }
+  function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+  function avgFromLast(arr){ return arr.length? arr.reduce((a,b)=>a+b,0)/arr.length : 0; }
+
   const gameEl = document.getElementById('game');
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d');
@@ -187,7 +194,7 @@
   }
   function vibrate(p){ if(navigator.vibrate) navigator.vibrate(p); }
 
-  // Resize to game area, not full window
+  // Resize to game area
   function resize(){
     DPR = Math.max(1, Math.min(2, window.devicePixelRatio||1));
     const rect = gameEl.getBoundingClientRect();
@@ -206,12 +213,6 @@
   }
   new ResizeObserver(resize).observe(gameEl);
   window.addEventListener('orientationchange', ()=>setTimeout(resize, 250), {passive:true});
-
-  // Utils
-  const clamp = (v,min,max)=> v<min?min:v>max?max:v;
-  const lerp = (a,b,t)=> a+(b-a)*t;
-  const sleep = (ms)=>new Promise(r=>setTimeout(r,ms));
-  const avgFromLast = (arr)=> arr.length? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
 
   // Colors
   function puckColors(){ const t = performance.now()/1000, h=(t*30)%360;
@@ -286,7 +287,6 @@
   }
 
   // Particles
-  let particlesArr = []; // unused alias guard
   function spawnSparks(x,y,color){ for(let i=0;i<8;i++){ particles.push({kind:'spark',x,y,vx:(Math.random()*2-1)*220,vy:(Math.random()*2-1)*220,life:140,t:0,color}); } }
   function spawnConfetti(x,y){ for(let i=0;i<50;i++){ particles.push({kind:'confetti',x,y,vx:(Math.random()*2-1)*140,vy:(Math.random()*-1)*220-80,g:420,size:2+Math.random()*3,rot:Math.random()*Math.PI,vr:(Math.random()*2-1)*6,life:1200,t:0,color:`hsl(${Math.floor(Math.random()*360)},90%,60%)`}); } }
 
@@ -297,7 +297,6 @@
     now = now || performance.now(); let dt=(now - tPrev)/1000; tPrev=now; if(dt>0.04) dt=0.04;
     const frameMs = now - lastFrameAt; lastFrameAt=now; perfSkip = frameMs>22;
 
-    // keyboard fallback
     const step=Math.max(180, unit*0.3)*dt;
     if(keys['w']||keys['ArrowUp']) leftY=clamp(leftY-step,paddleR,H-paddleR);
     if(keys['s']||keys['ArrowDown']) leftY=clamp(leftY+step,paddleR,H-paddleR);
