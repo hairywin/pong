@@ -15,11 +15,9 @@
   #score{font-weight:700;font-size:20px;letter-spacing:.5px}
   #best{font-size:12px;color:var(--muted)}
   #canvas{display:block;width:100%;height:100%}
-  /* touch zones hint */
   .zone{position:fixed;top:0;bottom:0;width:50vw;opacity:.08;pointer-events:none}
   .zone.left{left:0;background:radial-gradient(120vw 120vh at 0% 50%,#fff,transparent)}
   .zone.right{right:0;background:radial-gradient(120vw 120vh at 100% 50%,#fff,transparent)}
-  /* overlays */
   .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,7,15,.6);backdrop-filter:blur(4px)}
   .card{width:min(92vw,520px);background:#0e1225;border:1px solid #222a4e;border-radius:16px;box-shadow:0 10px 30px #0007;padding:20px;text-align:center}
   .card h1{margin:0 0 6px;font-size:22px}
@@ -29,8 +27,16 @@
   .btn.ghost{background:transparent;color:var(--fg);border:1px solid #2c355f}
   .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
   .stats{display:flex;gap:16px;justify-content:center;margin-top:10px;color:var(--muted);font-size:13px}
-  /* bottom helper */
   #tip{position:fixed;left:0;right:0;bottom:calc(8px + env(safe-area-inset-bottom));text-align:center;color:var(--muted);font-size:12px;pointer-events:none}
+
+  /* Countdown overlay */
+  #countdown{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(5,7,15,.35);pointer-events:none}
+  #countNum{font-weight:900;line-height:1;text-shadow:0 12px 40px rgba(0,0,0,.5);font-size:min(28vw,160px);color:#fff;animation:pop .8s ease both}
+  @keyframes pop{
+    0%{transform:scale(.4);opacity:0}
+    60%{transform:scale(1.1);opacity:1}
+    100%{transform:scale(1);opacity:.9}
+  }
 </style>
 </head>
 <body>
@@ -66,6 +72,9 @@
       </div>
     </div>
   </div>
+
+  <!-- Countdown -->
+  <div id="countdown"><div id="countNum">3</div></div>
 </div>
 
 <script>
@@ -81,6 +90,8 @@
   const restartBtn = document.getElementById('restartBtn');
   const shareBtn = document.getElementById('shareBtn');
   const muteBtn = document.getElementById('muteBtn');
+  const countdown = document.getElementById('countdown');
+  const countNum = document.getElementById('countNum');
 
   // State
   let W=0, H=0, DPR=1, unit=0;
@@ -92,7 +103,7 @@
 
   bestEl.textContent = best;
 
-  // Audio (lightweight)
+  // Audio
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
   let actx = null;
   function ping(freq, dur=0.06, type='sine'){
@@ -108,7 +119,6 @@
     setTimeout(()=>{ g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + dur); }, 0);
     setTimeout(()=>{ o.stop(); }, dur*1000+20);
   }
-
   function vibrate(ms){ if(navigator.vibrate) navigator.vibrate(ms); }
 
   // Resize
@@ -124,17 +134,15 @@
     W = cssW; H = cssH; unit = Math.min(W,H);
     paddleR = Math.max(24, unit*0.065);
     ballR   = Math.max(10, unit*0.018);
-    // maintain paddle positions relative
     leftY = leftY? Math.max(paddleR, Math.min(H-paddleR, leftY)) : H/2;
     rightY= rightY? Math.max(paddleR, Math.min(H-paddleR, rightY)) : H/2;
   }
   window.addEventListener('resize', resize, {passive:true});
   resize();
 
-  // Helpers
   function clamp(v,min,max){ return v<min?min:v>max?max:v; }
 
-  // Controls (multi-touch)
+  // Touch
   const touchSide = new Map(); // id -> 'L' | 'R'
   function handleTouches(list){
     for(let i=0;i<list.length;i++){
@@ -162,7 +170,7 @@
   canvas.addEventListener('touchend',   (e)=>{ e.preventDefault(); endTouches(e.changedTouches); },    {passive:false});
   canvas.addEventListener('touchcancel',(e)=>{ e.preventDefault(); endTouches(e.changedTouches); },    {passive:false});
 
-  // Desktop fallback (mouse + arrows/WASD)
+  // Desktop fallback
   let mouseDown=false;
   canvas.addEventListener('mousedown', e=>{ mouseDown=true; (e.clientX<W/2? leftY=clamp(e.clientY,paddleR,H-paddleR): rightY=clamp(e.clientY,paddleR,H-paddleR)); });
   window.addEventListener('mouseup', ()=>mouseDown=false);
@@ -176,10 +184,10 @@
     score = 0;
     scoreEl.textContent = '0';
     leftY = H*0.5; rightY = H*0.5;
-    const dir = Math.random()<0.5? -1: 1; // start moving left or right
+    const dir = Math.random()<0.5? -1: 1;
     ballX = W*0.5 + dir*unit*0.05;
     ballY = H*0.5;
-    const angle = (Math.random()*0.6 - 0.3); // slight vertical component
+    const angle = (Math.random()*0.6 - 0.3);
     speed = Math.max(220, unit*0.36);
     speedMax = Math.max(600, unit*0.9);
     vx = dir * speed * Math.cos(angle);
@@ -187,12 +195,28 @@
     gameOver = false;
   }
 
-  function start(){
-    serve();
-    running = true;
-    tPrev = performance.now();
+  // Countdown -> start
+  const sleep = (ms)=>new Promise(r=>setTimeout(r,ms));
+  async function begin(){
     startOverlay.style.display='none';
     gameOverOverlay.style.display='none';
+    running = false;
+    serve();
+    // show countdown
+    countdown.style.display='flex';
+    for(let n=3;n>=1;n--){
+      countNum.textContent = n;
+      countNum.style.animation = 'none';
+      // reflow to restart animation
+      void countNum.offsetWidth;
+      countNum.style.animation = 'pop .8s ease both';
+      // optional tick
+      if(!muted) ping(520 + (3-n)*120, 0.07, 'sine');
+      await sleep(900);
+    }
+    countdown.style.display='none';
+    tPrev = performance.now();
+    running = true;
     loop();
   }
 
@@ -210,39 +234,31 @@
     now = now || performance.now();
     let dt = (now - tPrev)/1000;
     tPrev = now;
-    // cap dt to avoid big jumps
     if(dt>0.04) dt=0.04;
 
-    // Keyboard fallback small moves
     const step = Math.max(180, unit*0.3)*dt;
     if(keys['w']||keys['ArrowUp'])   leftY = clamp(leftY - step, paddleR, H-paddleR);
     if(keys['s']||keys['ArrowDown']) leftY = clamp(leftY + step, paddleR, H-paddleR);
     if(keys['i']) rightY = clamp(rightY - step, paddleR, H-paddleR);
     if(keys['k']) rightY = clamp(rightY + step, paddleR, H-paddleR);
 
-    // Move ball
     ballX += vx*dt; ballY += vy*dt;
 
-    // Top/bottom bounce
     if(ballY - ballR <= 0){ ballY = ballR; vy = Math.abs(vy); ping(800); }
     if(ballY + ballR >= H){ ballY = H - ballR; vy = -Math.abs(vy); ping(800); }
 
-    const leftX  = 16 + paddleR;           // puck center x
+    const leftX  = 16 + paddleR;
     const rightX = W - 16 - paddleR;
 
-    // Paddle collisions
-    // Left side crossing
     if(vx < 0 && ballX - ballR <= leftX + paddleR){
       const dy = Math.abs(ballY - leftY);
       if(dy <= paddleR + ballR){
-        // reflect and add spin based on offset
         const offset = (ballY - leftY) / (paddleR + ballR);
         const angAdj = offset * 0.9;
         const sp = Math.min(speed*1.035, speedMax);
         speed = sp;
         const dir = 1;
-        const angle = angAdj;
-        const cs = Math.cos(angle), sn = Math.sin(angle);
+        const cs = Math.cos(angAdj), sn = Math.sin(angAdj);
         vx = dir * sp * cs;
         vy = sp * sn;
         ballX = leftX + paddleR + ballR + 0.1;
@@ -253,7 +269,7 @@
         vibrate(40); ping(220,0.12,'triangle'); end();
       }
     }
-    // Right side crossing
+
     if(vx > 0 && ballX + ballR >= rightX - paddleR){
       const dy = Math.abs(ballY - rightY);
       if(dy <= paddleR + ballR){
@@ -262,8 +278,7 @@
         const sp = Math.min(speed*1.035, speedMax);
         speed = sp;
         const dir = -1;
-        const angle = angAdj;
-        const cs = Math.cos(angle), sn = Math.sin(angle);
+        const cs = Math.cos(angAdj), sn = Math.sin(angAdj);
         vx = dir * sp * cs;
         vy = sp * sn;
         ballX = rightX - paddleR - ballR - 0.1;
@@ -278,15 +293,12 @@
     // Draw
     ctx.clearRect(0,0,W,H);
 
-    // Center dashed net
+    // Midline
     ctx.save();
     ctx.strokeStyle = 'rgba(255,255,255,.12)';
     ctx.lineWidth = 2;
     ctx.setLineDash([10,10]);
-    ctx.beginPath();
-    ctx.moveTo(W/2, 0);
-    ctx.lineTo(W/2, H);
-    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(W/2, 0); ctx.lineTo(W/2, H); ctx.stroke();
     ctx.restore();
 
     // Pucks
@@ -314,26 +326,24 @@
 
   function drawPuck(x,y,r,color){
     ctx.save();
-    // glow
     ctx.shadowColor = color; ctx.shadowBlur = 16; ctx.globalAlpha = 0.85;
     ctx.fillStyle = color;
     ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
     ctx.restore();
-    // rim
     ctx.save();
     ctx.strokeStyle='rgba(255,255,255,.15)'; ctx.lineWidth=2;
     ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.stroke(); ctx.restore();
   }
 
-  // Visibility pause
+  // Pause on tab hide
   document.addEventListener('visibilitychange', ()=>{
     if(document.hidden){ running=false; }
     else if(!gameOver && startOverlay.style.display==='none'){ tPrev=performance.now(); running=true; requestAnimationFrame(loop); }
   });
 
   // Buttons
-  startBtn.addEventListener('click', start);
-  restartBtn.addEventListener('click', ()=>{ start(); });
+  startBtn.addEventListener('click', begin);
+  restartBtn.addEventListener('click', begin);
   shareBtn.addEventListener('click', async ()=>{
     const text = `I scored ${score} in Two-Thumb Pong!`;
     const data = {title:'Two-Thumb Pong', text};
@@ -353,22 +363,18 @@
     if(!muted) ping(880,0.05);
   });
 
-  // Auto-start with a short countdown if user taps canvas
+  // Tap canvas to begin from splash
   canvas.addEventListener('click', ()=>{
-    if(startOverlay.style.display!=='none' && !running){
-      start();
-    }
+    if(startOverlay.style.display!=='none' && !running){ begin(); }
   });
 
-  // Initial paint
+  // Splash paint
   (function drawSplash(){
     ctx.clearRect(0,0,W,H);
-    // center pucks
     const leftX  = 16 + Math.max(24, unit*0.065);
     const rightX = W - 16 - Math.max(24, unit*0.065);
     drawPuck(leftX, H*0.5, Math.max(24, unit*0.065), '#7ae0ff');
     drawPuck(rightX,H*0.5, Math.max(24, unit*0.065), '#7ae0ff');
-    // ball
     const x=W*0.5, y=H*0.5, r=Math.max(10, unit*0.018);
     ctx.fillStyle='#eaf6ff'; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
   })();
