@@ -12,10 +12,10 @@
     --chip:#151c35; --chip2:#0f1530;
     --danger:#ff4d4d; --ok:#33d17a;
     --shadow:0 10px 28px rgba(0,0,0,.4);
-    --z-canvas:0; --z-lanes:1; --z-hud:10; --z-overlay:20; --z-count:25; --z-start:30;
+    --z-canvas:0; --z-lanes:1; --z-hud:10; --z-overlay:20; --z-count:25; --z-start:40;
   }
   *{box-sizing:border-box}
-  /* Force hidden to actually hide (fix for file:// and some resets) */
+  /* Hard fix: hidden must truly hide in all contexts */
   [hidden]{display:none !important;}
 
   html,body{height:100%;margin:0;background:var(--bg1);color:var(--fg);
@@ -51,7 +51,7 @@
   .btn.red{background:#2a0f16; color:#ffd6d6}
   .btn.green{background:#0e2a1d; color:#d6ffea}
 
-  /* Start CTA above overlays */
+  /* Start CTA above everything */
   .bottom-cta{position:fixed; left:50%; transform:translateX(-50%);
     bottom:calc(env(safe-area-inset-bottom,0px) + 18px); z-index:var(--z-start)}
   .bottom-cta .btn{font-size:16px; padding:16px 22px; border-radius:16px}
@@ -63,7 +63,7 @@
   .panel h1{margin:0 0 4px 0; font-size:22px}
   .panel p{margin:8px 0; color:var(--muted)}
   .panel .actions{display:flex; gap:10px; margin-top:14px; flex-wrap:wrap}
-  .tag{display:inline-block; font-size:12px; padding:6px 10px; border-radius:999px; background:#0b132b; color:var(--muted); margin-right:6px; margin-top:6px}
+  .tag{display:inline-block; font-size:12px; padding:6px 10px; border-radius:999px; background:#0b132b; color:#var(--muted); margin-right:6px; margin-top:6px}
 
   /* Countdown */
   .countdown{position:fixed; inset:0; display:grid; place-items:center; z-index:var(--z-count); pointer-events:none;
@@ -100,7 +100,7 @@
     <div class="meter"><i id="speedBar"></i></div>
   </div>
 
-  <!-- Start CTA ABOVE overlays -->
+  <!-- Start CTA -->
   <div class="bottom-cta">
     <button class="btn green" id="btnStart" role="button">▶ Tap to Start</button>
   </div>
@@ -263,7 +263,7 @@ document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState=
 function startFlow(){
   if(state===GameState.Playing || state===GameState.Countdown) return;
   closeOverlay(elHelp); closeOverlay(elSettings); closeOverlay(elGameOver);
-  startCta.hidden = true;                 /* hide Start during countdown */
+  startCta.hidden = true;
   startCountdown();
   lockScreen();
 }
@@ -276,7 +276,7 @@ function startCountdown(){
 function beginPlay(){
   state = GameState.Playing;
   elCountdown.hidden=true;
-  startCta.hidden = true;                 /* keep hidden while playing */
+  startCta.hidden = true;
   lastT = performance.now();
   ping(900,.06,.12);
 }
@@ -291,7 +291,7 @@ function gameOver(){
   elFinalScore.textContent = score; elFinalBest.textContent = best;
   elBest.textContent = best; elNewBestTag.style.display = (score===best && score>0)?'inline-block':'none';
   openOverlay(elGameOver);
-  startCta.hidden = false;                /* show Start on end */
+  startCta.hidden = false;
 }
 function resetGame(andCountdown=false){
   score=0; level=1; elScore.textContent=score; elLvl.textContent=level; elBar.style.width='0%';
@@ -472,8 +472,11 @@ document.addEventListener('gesturestart', e=>e.preventDefault());
 document.addEventListener('dblclick', e=>e.preventDefault(), {passive:false});
 addEventListener('pointerdown', ()=>{ if(audioCtx && audioCtx.state==='suspended') audioCtx.resume(); }, {once:true});
 
-/* First visit hint (Start stays above or hidden by countdown) */
-if(!store.get('tt_seen', false)){ openOverlay(elHelp); store.set('tt_seen', true); }
+/* Fallback: start on any tap outside overlay panels (capture so it wins) */
+document.addEventListener('pointerdown', (e)=>{
+  const onPanel = e.target.closest('.panel');
+  if(!onPanel && (state===GameState.Ready || state===GameState.Over)) startFlow();
+}, true);
 
 /* Keyboard for desktop testing */
 addEventListener('keydown', e=>{
